@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: werewolf-game
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "3002"
