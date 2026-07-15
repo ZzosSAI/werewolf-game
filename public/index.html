@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🐺 Werewolf — Village Mystery</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Comic Sans MS', cursive, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #f0e6d3;
+      min-height: 100vh;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    /* ─── Shared ─────────────────── */
+    .hidden { display: none !important; }
+    .btn {
+      font-size: 1.1rem;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.15s, box-shadow 0.15s;
+      font-family: inherit;
+      touch-action: manipulation;
+    }
+    .btn:active { transform: scale(0.95); }
+    .btn-gold { background: #FFD700; color: #1a1a2e; box-shadow: 0 5px 0 #B8860B; }
+    .btn-red { background: #DC143C; color: white; box-shadow: 0 5px 0 #8B0000; }
+    .btn-green { background: #2E8B57; color: white; box-shadow: 0 5px 0 #1B5E3A; }
+    .btn-blue { background: #4169E1; color: white; box-shadow: 0 5px 0 #1E3A8A; }
+
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      background: #DC143C; color: white; padding: 15px 25px; border-radius: 15px;
+      font-size: 1.1rem; font-weight: bold; z-index: 999;
+      animation: fadeIn 0.3s; max-width: 90%; text-align: center;
+    }
+
+    /* ─── Splash ─────────────────── */
+    #splash {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px; text-align: center;
+    }
+    #splash h1 {
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      color: #FFD700;
+      text-shadow: 3px 3px 0 #8B4513, 0 0 20px rgba(255,215,0,0.3);
+      margin-bottom: 5px;
+    }
+    #splash .moon { font-size: clamp(4rem, 15vw, 7rem); margin-bottom: 10px; animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+    #splash .sub { color: #a0a0c0; margin-bottom: 25px; font-size: clamp(0.9rem, 2.5vw, 1.2rem); }
+    .splash-buttons { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+    .btn-create { background: #FFD700; color: #1a1a2e; box-shadow: 0 6px 0 #B8860B; font-size: clamp(1.1rem, 3vw, 1.4rem); padding: 18px 36px; }
+    .btn-join { background: #4169E1; color: white; box-shadow: 0 6px 0 #1E3A8A; font-size: clamp(1.1rem, 3vw, 1.4rem); padding: 18px 36px; }
+    .name-row { display: flex; gap: 10px; align-items: center; max-width: 350px; margin: 10px auto; }
+    .name-row input { flex:1; font-size:1.1rem; padding:10px 15px; border:3px solid #4a4a8e; border-radius:15px; text-align:center; background:#1a1a3e; color:#f0e6d3; font-family:inherit; }
+    .name-row input:focus { outline:none; border-color:#FFD700; }
+    .avatar-grid { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin:10px 0; }
+    .avatar-btn { font-size:2rem; width:50px; height:50px; border:3px solid transparent; border-radius:50%; background:#1a1a3e; cursor:pointer; transition:all 0.15s; }
+    .avatar-btn.selected { border-color:#FFD700; background:#2a2a4e; transform:scale(1.15); }
+
+    #joinForm { display:flex; flex-direction:column; gap:10px; align-items:center; margin-top:15px; max-width:350px; margin-left:auto; margin-right:auto; }
+    #joinForm input { font-size:1.3rem; padding:12px 20px; border:3px solid #4a4a8e; border-radius:15px; text-align:center; width:100%; background:#1a1a3e; color:#f0e6d3; letter-spacing:4px; text-transform:uppercase; }
+    #joinForm input:focus { outline:none; border-color:#4169E1; }
+
+    /* ─── Lobby ─────────────────── */
+    #lobby { display:none; padding:20px; max-width:600px; margin:0 auto; }
+    #lobby h2 { text-align:center; font-size:2rem; color:#FFD700; }
+    .room-box { text-align:center; background:#1a1a3e; padding:15px; border-radius:20px; margin:15px 0; border:2px dashed #4a4a8e; }
+    .room-box .code { font-size:clamp(2.5rem,7vw,4rem); letter-spacing:10px; font-weight:bold; color:#FFD700; }
+    .room-box .share { font-size:0.85rem; color:#a0a0c0; margin-top:5px; }
+    .server-url { margin-top:10px; padding-top:10px; border-top:1px dashed #4a4a8e; font-size:0.85rem; color:#a0a0c0; }
+    .server-url strong { color:#FFD700; font-size:0.95rem; }
+    .player-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:15px 0; min-height:50px; }
+    .p-card { background:#1a1a3e; border-radius:12px; padding:8px 12px; display:flex; align-items:center; gap:6px; border:2px solid #4a4a8e; }
+    .p-card .av { font-size:1.5rem; }
+    .p-card.you { border-color:#FFD700; background:#2a2a4e; }
+    .btn-start { background:#2E8B57; color:white; box-shadow:0 6px 0 #1B5E3A; font-size:1.4rem; padding:18px 40px; width:100%; margin-top:10px; }
+
+    /* ─── Game Screen ─────────────────── */
+    #game { display:none; padding:15px; max-width:700px; margin:0 auto; min-height:100vh; }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:0.95rem; color:#a0a0c0; }
+
+    /* ─── Role Card ─────────────────── */
+    #roleCard {
+      position:fixed; top:0; left:0; right:0; bottom:0;
+      background:linear-gradient(135deg, #0a0a2e 0%, #1a1a3e 100%);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:200; text-align:center; animation:fadeIn 0.5s;
+    }
+    @keyframes fadeIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+    #roleCard .big-icon { font-size:clamp(4rem,15vw,7rem); margin-bottom:10px; }
+    #roleCard h2 { font-size:clamp(1.8rem,5vw,3rem); margin-bottom:5px; }
+    #roleCard .team-tag { padding:4px 16px; border-radius:20px; font-size:0.9rem; margin:5px 0 10px; display:inline-block; }
+    .team-village .team-tag { background:#2E8B57; color:white; }
+    .team-werewolf .team-tag { background:#8B0000; color:white; border:1px solid #DC143C; }
+    #roleCard .desc { font-size:clamp(0.9rem,2.5vw,1.1rem); color:#a0a0c0; max-width:300px; margin-bottom:20px; }
+    .btn-ack-role { background:#FFD700; color:#1a1a2e; box-shadow:0 5px 0 #B8860B; font-size:1.3rem; padding:16px 40px; }
+
+    /* ─── Night Overlay ─────────────────── */
+    .night-overlay {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      min-height:60vh; text-align:center; animation:fadeIn 0.5s;
+    }
+    .night-overlay .big-icon { font-size:clamp(3rem,10vw,5rem); }
+    .night-overlay h2 { font-size:clamp(1.5rem,5vw,2.2rem); margin:10px 0; }
+    .night-overlay p { color:#a0a0c0; max-width:350px; margin:5px auto; font-size:clamp(0.9rem,2.5vw,1.1rem); }
+    .night-bg { background:linear-gradient(180deg, #0a0a2e 0%, #0d0d35 100%); min-height:100vh; }
+
+    /* ─── Player Grid (for night actions & voting) ─── */
+    .player-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(100px, 1fr));
+      gap:10px; margin:15px 0; max-width:600px; margin-left:auto; margin-right:auto;
+    }
+    .p-choice {
+      background:#1a1a3e; border-radius:16px; padding:14px 10px; text-align:center;
+      cursor:pointer; transition:all 0.2s; border:3px solid transparent;
+    }
+    .p-choice .av { font-size:clamp(2.5rem,7vw,4rem); display:block; }
+    .p-choice .nm { font-size:clamp(1.1rem,4vw,1.6rem); margin-top:6px; color:#f0e6d3; font-weight:bold; }
+    .p-choice .info { font-size:0.9rem; color:#a0a0c0; margin-top:4px; }
+    .p-choice.can-select:hover { border-color:#FFD700; transform:scale(1.05); }
+    .p-choice.selected { border-color:#2E8B57; background:#1a3a2e; }
+    .p-choice.dead { opacity:0.3; pointer-events:none; filter:grayscale(1); }
+    .p-choice .wolf-badge { display:inline-block; background:#8B0000; color:white; font-size:0.75rem; padding:2px 10px; border-radius:8px; margin-top:4px; }
+
+    /* ─── Action Result ─────────────────── */
+    .action-result {
+      position:fixed; top:0; left:0; right:0; bottom:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:150; text-align:center; animation:fadeIn 0.4s;
+    }
+    .action-result .big-icon { font-size:clamp(4rem,12vw,6rem); margin-bottom:10px; }
+    .action-result h2 { font-size:clamp(1.3rem,4vw,2rem); }
+    .action-result p { color:#a0a0c0; font-size:clamp(0.9rem,2.5vw,1.1rem); max-width:350px; margin-top:5px; }
+    .bg-green { background:linear-gradient(135deg, #0a2e1a, #1a3e2a); }
+    .bg-blue { background:linear-gradient(135deg, #0a1a3e, #1a2a4e); }
+    .bg-red { background:linear-gradient(135deg, #2e0a0a, #3e1a1a); }
+    .bg-dark { background:linear-gradient(135deg, #0a0a2e, #1a1a3e); }
+
+    /* ─── Witch Special Screen ───────────── */
+    .witch-death-info {
+      background:#2a1a1a; border:2px solid #8B0000; border-radius:20px;
+      padding:15px 20px; margin:10px auto; max-width:350px; text-align:center;
+    }
+    .witch-buttons { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:15px 0; }
+
+    /* ─── Day / Voting ─────────────────── */
+    .day-header {
+      text-align:center; padding:15px; border-radius:20px; margin-bottom:10px;
+      background:linear-gradient(135deg, #f5e6ca, #FFE4B5); color:#5C2E0A;
+    }
+    .day-header h2 { font-size:clamp(1.5rem,5vw,2.2rem); }
+    .day-header p { font-size:1rem; margin-top:5px; }
+    .death-announce {
+      text-align:center; padding:15px; border-radius:15px; margin:10px 0;
+      font-size:clamp(1rem,3vw,1.3rem);
+    }
+    .death-announce.someone-died { background:#2a1a1a; border:2px solid #DC143C; }
+    .death-announce.no-death { background:#1a2a1a; border:2px solid #2E8B57; }
+
+    .timer-bar { width:100%; height:10px; background:#4a4a8e; border-radius:10px; overflow:hidden; margin:8px 0; }
+    .timer-fill { height:100%; background:#FFD700; border-radius:10px; transition:width 1s linear; }
+    .timer-fill.urgent { background:#DC143C; }
+    .timer-text { text-align:center; font-size:1.1rem; color:#FFD700; font-weight:bold; margin-bottom:5px; }
+
+    .voted-count { text-align:center; font-size:0.9rem; color:#a0a0c0; margin:5px 0; }
+
+    /* ─── Vote Result ─────────────────── */
+    .vote-reveal {
+      text-align:center; padding:20px; border-radius:20px; margin:15px 0; animation:fadeIn 0.5s;
+    }
+    .vote-reveal.eliminated { background:#2a1a1a; border:3px solid #DC143C; }
+    .vote-reveal.safe { background:#1a2a1a; border:3px solid #2E8B57; }
+    .vote-reveal .big { font-size:clamp(2.5rem,8vw,4rem); }
+    .vote-reveal h2 { font-size:clamp(1.3rem,4vw,1.8rem); margin:5px 0; }
+
+    /* ─── Game Over ─────────────────── */
+    #gameOver {
+      text-align:center; padding:20px; animation:fadeIn 0.5s;
+    }
+    #gameOver .big-icon { font-size:clamp(4rem,15vw,8rem); margin:10px 0; }
+    #gameOver h1 { font-size:clamp(2rem,7vw,3.5rem); margin:5px 0; }
+    #gameOver .sub { font-size:1.1rem; color:#a0a0c0; margin-bottom:15px; }
+    .role-grid {
+      display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:15px 0;
+    }
+    .r-card {
+      background:#1a1a3e; border-radius:12px; padding:8px 12px; display:flex; align-items:center; gap:6px;
+      font-size:0.95rem; border:2px solid #4a4a8e;
+    }
+    .r-card .tag { font-size:0.65rem; padding:2px 8px; border-radius:10px; margin-left:4px; }
+    .r-card.wolf { border-color:#8B0000; }
+    .r-card.wolf .tag { background:#DC143C; color:white; }
+    .r-card.village { border-color:#2E8B57; }
+    .r-card.village .tag { background:#2E8B57; color:white; }
+    .r-card .dead-tag { opacity:0.5; font-size:0.7rem; }
+
+    .btn-again { background:#FFD700; color:#1a1a2e; box-shadow:0 6px 0 #B8860B; font-size:1.3rem; padding:18px 40px; margin-top:15px; }
+
+    /* ─── Whisper / Waiting ────────────── */
+    #whisperOverlay {
+      position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.85); display:flex; flex-direction:column;
+      align-items:center; justify-content:center; z-index:100;
+    }
+    .whisper-dots::after { content:''; animation:dotAnim 1.5s steps(4,end) infinite; }
+    @keyframes dotAnim { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+
+    /* ─── Hunter ─────────────────── */
+    .hunter-banner {
+      text-align:center; padding:20px; border-radius:20px; margin:10px 0;
+      background:linear-gradient(135deg, #8B0000, #DC143C); color:white;
+      font-size:clamp(1.2rem,4vw,1.8rem); font-weight:bold;
+    }
+
+    /* ─── Responsive ─────────────────── */
+    @media(max-width:400px) { .player-grid{grid-template-columns:repeat(2,1fr);gap:8px} }
+    @media(min-width:600px) { .player-grid{grid-template-columns:repeat(4,1fr)} }
+    @media(pointer:coarse) { .btn,.p-choice{min-height:48px} }
+  </style>
+</head>
+<body>
+
+<!-- ════════ SPLASH ════════ -->
+<div id="splash">
+  <div class="moon">🌕</div>
+  <h1>🐺 Werewolf</h1>
+  <p class="sub">A game of secrets, suspicion, and survival</p>
+  <div class="name-row">
+    <input type="text" id="playerName" placeholder="Your name" maxlength="12" value="">
+  </div>
+  <div class="avatar-grid" id="avatarPicker"></div>
+  <div class="splash-buttons" style="margin-top:10px">
+    <button class="btn btn-create" id="btnCreate">🌙 Create Village</button>
+    <button class="btn btn-join" id="btnJoin">🚪 Join Village</button>
+  </div>
+  <div id="joinForm" class="hidden">
+    <input type="text" id="roomCode" placeholder="ROOM CODE" maxlength="4">
+    <button class="btn btn-join" id="btnJoinSubmit">✅ Enter</button>
+  </div>
+</div>
+
+<!-- ════════ LOBBY ════════ -->
+<div id="lobby">
+  <h2>🐺 The Village</h2>
+  <div class="room-box">
+    <div>Room Code</div>
+    <div class="code" id="roomCodeDisplay">----</div>
+    <div class="share">Give this code to your friends!</div>
+    <div class="server-url hidden" id="serverUrlBox">
+      Others connect at:<br>
+      <strong id="networkUrlText"></strong>
+    </div>
+  </div>
+  <div style="text-align:center;color:#a0a0c0;margin:5px 0">Villagers: <span id="playerCount">0</span></div>
+  <div class="player-list" id="playerList"></div>
+  <button class="btn btn-start" id="btnStartGame">🐺 Start Game!</button>
+  <p style="text-align:center;color:#a0a0c0;font-size:0.8rem;margin-top:8px">Need 5+ villagers to begin</p>
+</div>
+
+<!-- ════════ GAME SCREEN ════════ -->
+<div id="game">
+  <div class="top-bar">
+    <span id="phaseLabel">🌙 Night</span>
+    <span>Round <span id="roundNum">1</span></span>
+  </div>
+
+  <!-- Dynamic content area -->
+  <div id="gameContent"></div>
+</div>
+
+<!-- ════════ ROLE CARD ════════ -->
+<div id="roleCard" class="hidden">
+  <div class="big-icon" id="roleIcon">🐺</div>
+  <h2 id="roleName">Werewolf</h2>
+  <div class="team-tag" id="roleTeamTag">🐺 Werewolf Team</div>
+  <p class="desc" id="roleDesc">Description</p>
+  <button class="btn btn-ack-role" id="btnAckRole">✅ I understand!</button>
+</div>
+
+<!-- ════════ WHISPER OVERLAY ════════ -->
+<div id="whisperOverlay" class="hidden">
+  <div style="font-size:clamp(3rem,10vw,5rem);margin-bottom:10px">🤫</div>
+  <h2 style="font-size:clamp(1.3rem,4vw,2rem);text-align:center">Quiet...<span class="whisper-dots"></span></h2>
+  <p style="text-align:center;color:#a0a0c0;margin-top:5px" id="whisperText">The village is sleeping...</p>
+</div>
+
+<!-- ════════ TOAST ════════ -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ═══════════════════════════════════════════════════
+// CLIENT
+// ═══════════════════════════════════════════════════
+
+const socket = io();
+const $ = id => document.getElementById(id);
+
+// DOM
+const splash = $('splash');
+const lobby = $('lobby');
+const game = $('game');
+const gameContent = $('gameContent');
+const roleCard = $('roleCard');
+const whisperOverlay = $('whisperOverlay');
+const toast = $('toast');
+
+// State
+let myId = null;
+let myRole = null;
+let roomCode = '';
+let players = [];
+let phase = 'lobby';
+let canVote = false;
+let myVote = null;
+let selectedAvatar = '😊';
+
+// ─── Avatars ────────────────────────────────────
+const avatars = ['😊','😎','🤩','🐺','🔮','🧪','🏹','🛡️','🧑‍🌾','🐰','🐱','🐶','🐼','🦁','🦊','🐵','🦄','🐸'];
+const avatarPicker = $('avatarPicker');
+avatars.forEach(a => {
+  const b = document.createElement('button');
+  b.className = 'avatar-btn' + (a === selectedAvatar ? ' selected' : '');
+  b.textContent = a;
+  b.onclick = () => {
+    document.querySelectorAll('.avatar-btn').forEach(x => x.classList.remove('selected'));
+    b.classList.add('selected');
+    selectedAvatar = a;
+  };
+  avatarPicker.appendChild(b);
+});
+
+// ─── Toast ──────────────────────────────────────
+function showToast(msg, dur = 3000) {
+  toast.textContent = msg; toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), dur);
+}
+
+// ─── Speak (text-to-speech) ─────────────────────
+function speak(text) {
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.85; u.pitch = 1.0; u.volume = 1;
+    speechSynthesis.speak(u);
+  }
+}
+
+// ─── Render Player Grid ──────────────────────────
+function renderPlayerGrid(players, opts = {}) {
+  const { selectable, selectedId, onSelect, showRoleLabel, showDead } = opts;
+  return players.map(p => {
+    const isDead = !p.alive && showDead;
+    return `<div class="p-choice${selectable && p.alive ? ' can-select' : ''}${selectedId === p.id ? ' selected' : ''}${isDead ? ' dead' : ''}"
+                data-id="${p.id}" onclick="${onSelect ? `clickPlayer('${p.id}')` : ''}">
+      <span class="av">${p.avatar}</span>
+      <div class="nm">${p.name}</div>
+      ${p.role && showRoleLabel ? `<div class="info">${p.emoji || ''} ${capitalize(p.role)}</div>` : ''}
+      ${p.isWolfMate ? '<div class="wolf-badge">🐺 Pack</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+// Global click handler for player selections
+let playerClickHandler = null;
+function clickPlayer(id) {
+  if (playerClickHandler) playerClickHandler(id);
+}
+
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+// ═══════════════════════════════════════════════════
+// SOCKET HANDLERS
+// ═══════════════════════════════════════════════════
+
+// ─── Room Management ────────────────────────────
+$('btnCreate').onclick = () => {
+  const name = $('playerName').value.trim() || 'Villager';
+  socket.emit('createRoom', { name, avatar: selectedAvatar }, (res) => {
+    if (res.success) {
+      myId = res.playerId;
+      roomCode = res.roomCode;
+      $('roomCodeDisplay').textContent = roomCode;
+      splash.classList.add('hidden');
+      lobby.style.display = 'block';
+    }
+  });
+};
+
+$('btnJoin').onclick = () => $('joinForm').classList.toggle('hidden');
+$('btnJoinSubmit').onclick = () => {
+  const code = $('roomCode').value.toUpperCase().trim();
+  if (code.length !== 4) { showToast('Enter a 4-letter code!'); return; }
+  const name = $('playerName').value.trim() || 'Villager';
+  socket.emit('joinRoom', { roomCode: code, name, avatar: selectedAvatar }, (res) => {
+    if (res.success) {
+      myId = res.playerId;
+      roomCode = res.roomCode;
+      $('roomCodeDisplay').textContent = roomCode;
+      splash.classList.add('hidden');
+      lobby.style.display = 'block';
+    } else {
+      showToast(res.error || 'Could not join');
+    }
+  });
+};
+
+socket.on('serverInfo', (data) => {
+  $('networkUrlText').textContent = data.networkUrl;
+  $('serverUrlBox').classList.remove('hidden');
+});
+
+socket.on('playerJoined', (data) => {
+  players = data.players;
+  updateLobby();
+});
+
+socket.on('playerLeft', (data) => {
+  players = data.players;
+  updateLobby();
+});
+
+function updateLobby() {
+  $('playerList').innerHTML = players.map(p =>
+    `<div class="p-card${p.id === myId ? ' you' : ''}">
+      <span class="av">${p.avatar}</span>
+      <span>${p.name}${p.id === myId ? ' (You)' : ''}</span>
+    </div>`
+  ).join('');
+  $('playerCount').textContent = players.length;
+}
+
+$('btnStartGame').onclick = () => socket.emit('startGame');
+socket.on('error', (msg) => showToast(msg));
+
+// ─── Role Assignment ────────────────────────────
+let roleAckResolve = null;
+
+socket.on('yourRole', (data) => {
+  myRole = data.role;
+  // Show role card
+  roleCard.className = data.team === 'werewolf' ? 'team-werewolf' : 'team-village';
+  roleCard.classList.remove('hidden');
+  $('roleIcon').textContent = data.emoji;
+  $('roleName').textContent = data.name;
+  $('roleTeamTag').textContent = data.team === 'werewolf' ? '🐺 Werewolf Team' : '🏡 Village Team';
+  $('roleDesc').textContent = data.description;
+
+  // Hide game and other screens
+  lobby.style.display = 'none';
+  game.style.display = 'none';
+});
+
+$('btnAckRole').onclick = () => {
+  roleCard.classList.add('hidden');
+  game.style.display = 'block';
+  speak(`You are the ${$('roleName').textContent}`);
+};
+
+// ─── Game State ─────────────────────────────────
+socket.on('gameState', (data) => {
+  players = data.players || players;
+  phase = data.phase;
+  if ($('roundNum')) $('roundNum').textContent = data.round || 1;
+});
+
+// ─── Night Phase ────────────────────────────────
+socket.on('nightPhase', (data) => {
+  phase = 'night';
+  game.style.display = 'block';
+  $('phaseLabel').textContent = `🌙 Night ${data.round}`;
+  gameContent.innerHTML = `
+    <div class="night-overlay night-bg">
+      <div class="big-icon">🌙</div>
+      <h2>Night Falls...</h2>
+      <p>The village is quiet. Close your eyes and wait for your turn.</p>
+    </div>`;
+  whisperOverlay.classList.remove('hidden');
+  $('whisperText').textContent = 'The village is sleeping...';
+});
+
+socket.on('closeEyes', (data) => {
+  // Already handled by nightPhase
+});
+
+// ─── Guard Action ──────────────────────────────
+socket.on('guardAction', (data) => {
+  whisperOverlay.classList.add('hidden');
+  const alive = data.alivePlayers || [];
+  const handler = (id) => {
+    socket.emit('guardProtect', { targetId: id });
+    playerClickHandler = null;
+    gameContent.innerHTML = `<div class="action-result bg-green">
+      <div class="big-icon">🛡️</div>
+      <h2>Protected!</h2>
+      <p>You guard them through the night.</p>
+    </div>`;
+  };
+  playerClickHandler = handler;
+
+  gameContent.innerHTML = `
+    <div class="night-overlay night-bg">
+      <div class="big-icon">🛡️</div>
+      <h2>Guard — Protect Someone</h2>
+      <p>Who will you shield from the wolves tonight?</p>
+      <div class="player-grid">${renderPlayerGrid(alive, { selectable: true, onSelect: true, showDead: false })}</div>
+    </div>`;
+});
+
+socket.on('witchAction', (data) => {
+  whisperOverlay.classList.add('hidden');
+
+  const killed = data.killedByWerewolves;
+  const killedPlayer = data.killedPlayer;
+  const canSave = data.hasAntidote && killed;
+  const canPoison = data.hasPoison;
+  const alive = data.alivePlayers || [];
+
+  // Poison picker handler
+  let poisonHandler = null;
+
+  const showWitchScreen = () => {
+    let html = `<div class="night-overlay night-bg">
+      <div class="big-icon">🧪</div>
+      <h2>Witch — What will you do?</h2>`;
+
+    if (killed) {
+      html += `<div class="witch-death-info">
+        <strong>💀 ${killedPlayer?.name || 'Someone'} was attacked!</strong>
+      </div>`;
+    } else {
+      html += `<p class="witch-death-info" style="border-color:#2E8B57;background:#1a2a1a">
+        <strong>🌙 The night is peaceful... no one was attacked.</strong>
+      </p>`;
+    }
+
+    html += `<div class="witch-buttons">`;
+    if (canSave) {
+      html += `<button class="btn btn-green" onclick="witchSave()">💚 Save (Antidote)</button>`;
+    }
+    if (canPoison) {
+      html += `<button class="btn btn-red" onclick="witchPoisonMode()">☠️ Poison someone</button>`;
+    }
+    html += `<button class="btn btn-blue" onclick="witchSkip()">⏭️ Do nothing</button>`;
+    html += `</div>`;
+
+    if (canPoison) {
+      html += `<div id="witchPoisonGrid" class="hidden" style="margin-top:10px">
+        <p style="color:#a0a0c0;margin-bottom:8px">Who will you poison?</p>
+        <div class="player-grid">${renderPlayerGrid(alive, { selectable: true, onSelect: true, showDead: false })}</div>
+      </div>`;
+    }
+
+    html += `</div>`;
+    gameContent.innerHTML = html;
+  };
+
+  window.witchSave = () => {
+    socket.emit('witchAction', { action: 'save' });
+    gameContent.innerHTML = `<div class="action-result bg-green">
+      <div class="big-icon">💚</div>
+      <h2>Antidote Used!</h2>
+      <p>You saved them from the wolves.</p>
+    </div>`;
+    playerClickHandler = null;
+  };
+
+  window.witchPoisonMode = () => {
+    const grid = document.getElementById('witchPoisonGrid');
+    if (grid) grid.classList.remove('hidden');
+  };
+
+  window.witchSkip = () => {
+    socket.emit('witchAction', { action: 'skip' });
+    gameContent.innerHTML = `<div class="action-result bg-dark">
+      <div class="big-icon">⏭️</div>
+      <h2>You did nothing</h2>
+      <p>The night continues...</p>
+    </div>`;
+    playerClickHandler = null;
+  };
+
+  if (canPoison) {
+    const handler = (id) => {
+      socket.emit('witchAction', { action: 'poison', targetId: id });
+      playerClickHandler = null;
+      gameContent.innerHTML = `<div class="action-result bg-red">
+        <div class="big-icon">☠️</div>
+        <h2>Poison Administered</h2>
+        <p>They won't see the morning.</p>
+      </div>`;
+    };
+    playerClickHandler = handler;
+  }
+
+  showWitchScreen();
+});
+
+// ─── Werewolf Action ────────────────────────────
+socket.on('werewolfAction', (data) => {
+  whisperOverlay.classList.add('hidden');
+  const targets = data.alivePlayers || [];
+  const fellowWolves = data.fellowWolves || [];
+  const wolfNames = fellowWolves.map(w => w.name).join(', ');
+
+  const handler = (id) => {
+    socket.emit('wolfKill', { targetId: id });
+    playerClickHandler = null;
+    gameContent.innerHTML = `<div class="action-result bg-red">
+      <div class="big-icon">🐺</div>
+      <h2>Target Chosen!</h2>
+      <p>Waiting for your pack to decide...</p>
+    </div>`;
+  };
+  playerClickHandler = handler;
+
+  gameContent.innerHTML = `
+    <div class="night-overlay night-bg">
+      <div class="big-icon">🐺</div>
+      <h2>Werewolves — Choose Your Prey</h2>
+      ${fellowWolves.length > 0 ? `<p>Your pack: ${wolfNames}</p>` : '<p>You hunt alone tonight.</p>'}
+      <p style="color:#a0a0c0;font-size:0.9rem">Tap a villager to attack...</p>
+      <div class="player-grid">${renderPlayerGrid(targets, { selectable: true, onSelect: true, showDead: false })}</div>
+    </div>`;
+});
+
+// ─── Seer Action ────────────────────────────────
+socket.on('seerAction', (data) => {
+  whisperOverlay.classList.add('hidden');
+  const alive = data.alivePlayers || [];
+
+  const handler = (id) => {
+    socket.emit('seerCheck', { targetId: id });
+    playerClickHandler = null;
+    gameContent.innerHTML = `<div class="action-result bg-blue">
+      <div class="big-icon">🔮</div>
+      <h2>Peering into the soul...</h2>
+      <p>The truth shall be revealed!</p>
+    </div>`;
+  };
+  playerClickHandler = handler;
+
+  gameContent.innerHTML = `
+    <div class="night-overlay night-bg">
+      <div class="big-icon">🔮</div>
+      <h2>Seer — Search for the Truth</h2>
+      <p>Peer into a player's soul. Who will you investigate?</p>
+      <div class="player-grid">${renderPlayerGrid(alive, { selectable: true, onSelect: true, showDead: false })}</div>
+    </div>`;
+});
+
+// ─── Night Action Result ────────────────────────
+socket.on('nightActionResult', (data) => {
+  if (data.checkResult) {
+    // Seer result
+    const isWolf = data.checkResult === 'werewolf';
+    gameContent.innerHTML = `
+      <div class="action-result ${isWolf ? 'bg-red' : 'bg-green'}">
+        <div class="big-icon">🔮</div>
+        <h2>${data.checkedPlayer?.name || 'They'} is...</h2>
+        <h2 style="font-size:clamp(2rem,6vw,3rem)">${isWolf ? '🐺 A WEREWOLF!' : '✅ A Villager'}</h2>
+        <p>${data.message}</p>
+      </div>`;
+    speak(`${data.checkedPlayer?.name || 'They'} is ${isWolf ? 'a Werewolf!' : 'on our side.'}`);
+  } else if (data.message) {
+    // Don't show spammy messages - handled by the action screens
+  }
+});
+
+// ─── Hunter Action ─────────────────────────────
+socket.on('hunterAction', (data) => {
+  const targets = data.alivePlayers || [];
+
+  const handler = (id) => {
+    socket.emit('hunterShot', { targetId: id });
+    playerClickHandler = null;
+    gameContent.innerHTML = `<div class="action-result bg-red">
+      <div class="big-icon">🏹</div>
+      <h2>Final Shot!</h2>
+      <p>You take them with you!</p>
+    </div>`;
+  };
+  playerClickHandler = handler;
+
+  gameContent.innerHTML = `
+    <div class="hunter-banner">🏹 The Hunter Rises!</div>
+    <div class="night-overlay">
+      <div class="big-icon">🏹</div>
+      <h2>Take your revenge!</h2>
+      <p>You've been eliminated. Shoot one player before you go!</p>
+      <div class="player-grid">${renderPlayerGrid(targets, { selectable: true, onSelect: true, showDead: false })}</div>
+    </div>`;
+});
+
+// ─── Hunter Death Announcement ─────────────────
+socket.on('hunterDeath', (data) => {
+  // Shown during the day phase already
+});
+
+// ─── Whisper Events ────────────────────────────
+socket.on('whisper', (data) => {
+  if (data.phase === 'guard') {
+    whisperOverlay.classList.remove('hidden');
+    $('whisperText').textContent = 'The Guard is watching... 🛡️';
+  } else if (data.phase === 'werewolf') {
+    whisperOverlay.classList.remove('hidden');
+    $('whisperText').textContent = 'The wolves are hunting... 🐺';
+  } else if (data.phase === 'seer') {
+    whisperOverlay.classList.remove('hidden');
+    $('whisperText').textContent = 'The Seer is searching... 🔮';
+  } else if (data.phase === 'witch') {
+    whisperOverlay.classList.remove('hidden');
+    $('whisperText').textContent = 'The Witch is brewing... 🧪';
+  } else if (data.phase === 'werewolf_result') {
+    // Wolves got their target, hide whisper briefly
+  } else if (data.phase === 'guard_success') {
+    // Guard protected someone successfully
+  }
+});
+
+// ─── Day Phase ─────────────────────────────────
+socket.on('dayPhase', (data) => {
+  phase = 'day';
+  whisperOverlay.classList.add('hidden');
+  playerClickHandler = null;
+  canVote = false;
+
+  const deaths = data.deaths || [];
+  const hasDeaths = deaths.length > 0;
+
+  let deathHtml = '';
+  if (hasDeaths) {
+    deathHtml = `<div class="death-announce someone-died">
+      💀 <strong>Death in the village!</strong><br>
+      ${deaths.map(d => `${d.emoji} ${d.name} (${capitalize(d.role)})`).join('<br>')}
+    </div>`;
+  } else {
+    deathHtml = `<div class="death-announce no-death">
+      🌅 <strong>A peaceful night!</strong><br>
+      <span style="font-size:0.9rem">No one died last night.</span>
+    </div>`;
+  }
+
+  gameContent.innerHTML = `
+    <div class="day-header">
+      <h2>☀️ Day ${data.round}</h2>
+      <p>${data.aliveCount} villagers remain</p>
+    </div>
+    ${deathHtml}
+    <div style="text-align:center;padding:15px;color:#a0a0c0;font-size:1.1rem">
+      Discuss who might be the werewolf...<br>
+      <span style="font-size:0.9rem">Voting starts shortly!</span>
+    </div>`;
+
+  $('phaseLabel').textContent = `☀️ Day ${data.round}`;
+  speak(`Day ${data.round}. ${hasDeaths ? deaths.length + ' person was killed last night.' : 'A peaceful night with no deaths.'} Discuss and vote!`);
+});
+
+// ─── Start Voting ──────────────────────────────
+socket.on('startVoting', (data) => {
+  phase = 'voting';
+  canVote = true;
+  myVote = null;
+  const alive = data.alivePlayers || [];
+
+  const handler = (id) => {
+    if (id === myId) return;
+    socket.emit('vote', { targetId: id });
+    myVote = id;
+    // Update UI to show selected
+    document.querySelectorAll('.p-choice').forEach(el => {
+      el.classList.toggle('selected', el.dataset.id === id);
+    });
+  };
+  playerClickHandler = handler;
+
+  gameContent.innerHTML += `<div id="votingArea">
+    <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
+    <div class="timer-text" id="timerText">⏰ 30s</div>
+    <div class="voted-count" id="votedCount">0 votes cast</div>
+    <div style="text-align:center;font-size:1.2rem;color:#FFD700;font-weight:bold">🗳️ Who is the Werewolf?</div>
+    <div class="player-grid" id="voteGrid">${renderPlayerGrid(alive, { selectable: true, onSelect: true, showDead: false })}</div>
+  </div>`;
+
+  speak('Time to vote! Who is the werewolf?');
+});
+
+// ─── Timer ─────────────────────────────────────
+socket.on('timer', (remaining) => {
+  const fill = document.getElementById('timerFill');
+  const text = document.getElementById('timerText');
+  if (fill) {
+    const pct = (remaining / 30) * 100;
+    fill.style.width = pct + '%';
+    fill.classList.toggle('urgent', remaining <= 5);
+  }
+  if (text) text.textContent = `⏰ ${remaining}s`;
+});
+
+socket.on('gameState', (data) => {
+  if (data.votedCount !== undefined) {
+    const el = document.getElementById('votedCount');
+    if (el) el.textContent = `${data.votedCount} votes cast`;
+  }
+});
+
+// ─── Vote Result ────────────────────────────────
+socket.on('voteResult', (data) => {
+  phase = 'vote_result';
+  canVote = false;
+  playerClickHandler = null;
+
+  const elim = data.eliminated;
+
+  let html = '';
+  if (elim) {
+    html = `<div class="vote-reveal eliminated">
+      <div class="big">❌</div>
+      <h2>${elim.name} was banished!</h2>
+      <p style="margin-top:5px">${elim.emoji} ${capitalize(elim.role)}</p>
+      <p style="font-size:0.9rem;color:#a0a0c0;margin-top:5px">The village has spoken.</p>
+    </div>`;
+    speak(`${elim.name} was banished. They were a ${elim.role}.`);
+  } else {
+    html = `<div class="vote-reveal safe">
+      <div class="big">🤝</div>
+      <h2>Tie Vote!</h2>
+      <p style="color:#a0a0c0">No one was banished. The village couldn't decide.</p>
+    </div>`;
+    speak('Tie vote! No one was banished.');
+  }
+
+  gameContent.innerHTML += `<div id="voteResultArea">${html}</div>`;
+});
+
+// ─── Game Over ─────────────────────────────────
+socket.on('gameOver', (data) => {
+  phase = 'finished';
+  whisperOverlay.classList.add('hidden');
+
+  const winner = data.winner;
+  const allPlayers = data.players || [];
+
+  const villageWon = winner === 'village';
+  const emoji = villageWon ? '🏡' : '🐺';
+  const title = villageWon ? 'The Village Wins!' : 'The Werewolves Win!';
+  const sub = villageWon
+    ? 'All werewolves have been caught! The village is safe!'
+    : 'The werewolves have taken over the village!';
+
+  const roleGrid = allPlayers.map(p => {
+    const team = p.team === 'werewolf' ? 'wolf' : 'village';
+    return `<div class="r-card ${team}">
+      <span>${p.avatar}</span>
+      <span>${p.name}</span>
+      <span class="tag">${p.emoji} ${capitalize(p.role)}</span>
+      ${!p.alive ? '<span class="dead-tag">💀</span>' : ''}
+    </div>`;
+  }).join('');
+
+  gameContent.innerHTML = `
+    <div id="gameOver">
+      <div class="big-icon">${emoji}</div>
+      <h1>${title}</h1>
+      <div class="sub">${sub}</div>
+      <h3 style="color:#FFD700;margin:15px 0 5px">📋 Role Reveal</h3>
+      <div class="role-grid">${roleGrid}</div>
+      <button class="btn btn-again" onclick="location.reload()">🔄 Play Again</button>
+    </div>`;
+
+  $('phaseLabel').textContent = '🏁 Game Over';
+  speak(title);
+});
+
+// ─── Enter key shortcuts ──────────────────────
+$('playerName').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnCreate').click(); });
+$('roomCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnJoinSubmit').click(); });
+
+console.log('🐺 Werewolf game loaded!');
+</script>
+</body>
+</html>
