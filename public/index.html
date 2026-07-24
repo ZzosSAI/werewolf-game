@@ -231,6 +231,69 @@
     @media(max-width:400px) { .player-grid{grid-template-columns:repeat(2,1fr);gap:8px} }
     @media(min-width:600px) { .player-grid{grid-template-columns:repeat(4,1fr)} }
     @media(pointer:coarse) { .btn,.p-choice{min-height:48px} }
+
+    /* ─── How to Play ────────────── */
+    .how-btn {
+      background: transparent; color: #a0a0c0; border: 2px solid #4a4a8e;
+      font-size: 1rem; padding: 10px 24px; margin-top: 15px; cursor: pointer;
+      border-radius: 30px; transition: all 0.2s; font-family: inherit; font-weight: 500;
+    }
+    .how-btn:hover { border-color: #FFD700; color: #FFD700; }
+
+    #howToPlay {
+      display: none; max-width: 700px; margin: 20px auto; text-align: left;
+      animation: fadeIn 0.4s;
+    }
+    #howToPlay.open { display: block; }
+
+    .how-section { margin-bottom: 20px; }
+    .how-section h3 {
+      font-size: clamp(1.1rem, 3vw, 1.5rem); color: #FFD700;
+      margin-bottom: 10px; text-align: center;
+    }
+
+    .how-cycle {
+      display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+      background: #1a1a3e; border-radius: 16px; padding: 12px 16px;
+      border: 1px solid #4a4a8e; margin-bottom: 15px;
+    }
+    .how-step {
+      display: flex; align-items: center; gap: 4px;
+      font-size: clamp(0.85rem, 2.2vw, 1rem); color: #f0e6d3;
+    }
+    .how-step .arrow { color: #4a4a8e; font-size: 1.2rem; margin: 0 2px; }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px; margin-top: 5px;
+    }
+    .role-card {
+      background: #1a1a3e; border-radius: 16px; padding: 14px;
+      display: flex; align-items: center; gap: 12px;
+      border: 2px solid #4a4a8e; transition: border-color 0.2s;
+    }
+    .role-card .rc-icon { font-size: clamp(2rem, 5vw, 2.8rem); flex-shrink: 0; }
+    .role-card .rc-info { flex: 1; min-width: 0; }
+    .role-card .rc-name { font-size: clamp(0.95rem, 2.5vw, 1.15rem); font-weight: 600; color: #f0e6d3; }
+    .role-card .rc-team { font-size: 0.75rem; padding: 1px 10px; border-radius: 10px; display: inline-block; margin: 2px 0 4px; }
+    .role-card .rc-desc { font-size: clamp(0.8rem, 2vw, 0.9rem); color: #a0a0c0; line-height: 1.3; }
+    .role-card.wolf-side { border-color: #8B0000; }
+    .role-card.wolf-side .rc-team { background: #8B0000; color: white; }
+    .role-card.village-side { border-color: #2E8B57; }
+    .role-card.village-side .rc-team { background: #2E8B57; color: white; }
+
+    .win-conditions {
+      background: #1a1a3e; border-radius: 16px; padding: 14px 18px;
+      border: 1px solid #4a4a8e; display: flex; gap: 15px;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .win-condition {
+      text-align: center; font-size: clamp(0.85rem, 2.2vw, 1rem);
+    }
+    .win-condition .wc-icon { font-size: 1.5rem; display: block; margin-bottom: 2px; }
+    .win-condition .wc-label { color: #a0a0c0; }
+    .win-condition .wc-label strong { color: #f0e6d3; }
   </style>
 </head>
 <body>
@@ -251,6 +314,102 @@
   <div id="joinForm" class="hidden">
     <input type="text" id="roomCode" placeholder="ROOM CODE" maxlength="4">
     <button class="btn btn-join" id="btnJoinSubmit">✅ Enter</button>
+  </div>
+
+  <button class="how-btn" id="howBtn">📖 How to Play</button>
+
+  <div id="howToPlay">
+    <div class="how-section">
+      <h3>🎯 Goal</h3>
+      <div class="win-conditions">
+        <div class="win-condition">
+          <span class="wc-icon">🏡</span>
+          <span class="wc-label"><strong>Village</strong> wins if<br>all wolves are caught!</span>
+        </div>
+        <div class="win-condition">
+          <span class="wc-icon">🐺</span>
+          <span class="wc-label"><strong>Werewolves</strong> win if<br>they outnumber the village!</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="how-section">
+      <h3>🔄 Game Flow</h3>
+      <div class="how-cycle">
+        <span class="how-step">🌙 <b>Night</b> — roles act in secret</span>
+        <span class="how-step arrow">→</span>
+        <span class="how-step">☀️ <b>Day</b> — discuss &amp; vote</span>
+        <span class="how-step arrow">→</span>
+        <span class="how-step">🔁 <b>Repeat</b> until one team wins</span>
+      </div>
+    </div>
+
+    <div class="how-section">
+      <h3>👥 Roles</h3>
+      <div class="roles-grid">
+        <div class="role-card wolf-side">
+          <span class="rc-icon">🐺</span>
+          <div class="rc-info">
+            <div class="rc-name">Werewolf</div>
+            <span class="rc-team">🐺 Wolf Team</span>
+            <div class="rc-desc">Hunt one villager each night. Blend in by day.</div>
+          </div>
+        </div>
+        <div class="role-card village-side">
+          <span class="rc-icon">🔮</span>
+          <div class="rc-info">
+            <div class="rc-name">Seer</div>
+            <span class="rc-team">🏡 Village Team</span>
+            <div class="rc-desc">Each night, peek at one player's true identity.</div>
+          </div>
+        </div>
+        <div class="role-card village-side">
+          <span class="rc-icon">🧪</span>
+          <div class="rc-info">
+            <div class="rc-name">Witch</div>
+            <span class="rc-team">🏡 Village Team</span>
+            <div class="rc-desc">One antidote to save. One poison to kill. Use wisely!</div>
+          </div>
+        </div>
+        <div class="role-card village-side">
+          <span class="rc-icon">🏹</span>
+          <div class="rc-info">
+            <div class="rc-name">Hunter</div>
+            <span class="rc-team">🏡 Village Team</span>
+            <div class="rc-desc">When eliminated, take one player with you!</div>
+          </div>
+        </div>
+        <div class="role-card village-side">
+          <span class="rc-icon">🛡️</span>
+          <div class="rc-info">
+            <div class="rc-name">Guard</div>
+            <span class="rc-team">🏡 Village Team</span>
+            <div class="rc-desc">Protect one player from wolves each night.</div>
+          </div>
+        </div>
+        <div class="role-card village-side">
+          <span class="rc-icon">🧑‍🌾</span>
+          <div class="rc-info">
+            <div class="rc-name">Villager</div>
+            <span class="rc-team">🏡 Village Team</span>
+            <div class="rc-desc">No special powers — but your vote counts!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="how-section">
+      <h3>🌙 Night Order</h3>
+      <div class="how-cycle">
+        <span class="how-step">🛡️ <b>Guard</b> protects</span>
+        <span class="how-step arrow">→</span>
+        <span class="how-step">🐺 <b>Wolves</b> hunt</span>
+        <span class="how-step arrow">→</span>
+        <span class="how-step">🔮 <b>Seer</b> investigates</span>
+        <span class="how-step arrow">→</span>
+        <span class="how-step">🧪 <b>Witch</b> saves or poisons</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -885,6 +1044,13 @@ socket.on('gameOver', (data) => {
   $('phaseLabel').textContent = '🏁 Game Over';
   speak(title);
 });
+
+// ─── How to Play toggle ─────────────────────────
+$('howBtn').onclick = () => {
+  const panel = $('howToPlay');
+  panel.classList.toggle('open');
+  $('howBtn').textContent = panel.classList.contains('open') ? '📖 Hide Guide' : '📖 How to Play';
+};
 
 // ─── Enter key shortcuts ──────────────────────
 $('playerName').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnCreate').click(); });
